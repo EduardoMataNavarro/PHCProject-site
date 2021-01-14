@@ -1,0 +1,11 @@
+img {
+    max-width: 100%;
+    min-width: 55px;
+    min-height: auto;
+    display: block;
+    border-style: none;
+}
+
+.slick-thumb {
+    min-height: 55px;
+}
