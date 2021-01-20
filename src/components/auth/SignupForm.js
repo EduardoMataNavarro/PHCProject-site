@@ -15,6 +15,7 @@ export default class SignupForm extends Component {
             estado: '0'
         };
         this.handleEstadoSelectChange = this.handleEstadoSelectChange.bind(this);
+        this.handleSelectChange= this.handleSelectChange.bind(this);
     }
 
     componentDidMount() {
@@ -62,6 +63,10 @@ export default class SignupForm extends Component {
             }.bind(this)
         });
     }
+    handleSelectChange(e) {
+        this.props.handleChange(e);
+        this.setState({[e.target.name] : e.target.value});
+    }
     render() {
         return (
             <form onSubmit={this.props.onSubmit}>
@@ -96,7 +101,7 @@ export default class SignupForm extends Component {
                                 valuename="id"
                                 value={this.state.estado}
                                 displayname="Nombre"
-                                handleChange={this.props.handleChange} />
+                                handleChange={this.handleSelectChange} />
                         </div>
                         <div className="col-md-4">
                             <SelFormGroup 
@@ -106,7 +111,7 @@ export default class SignupForm extends Component {
                             displayname="Nombre"
                             value={this.state.sucursal}
                             values={[...this.state.sucursales]} 
-                            handleChange={this.props.handleChange} />
+                            handleChange={this.handleSelectChange} />
                         </div>
                     </div>
                     <div className="row">

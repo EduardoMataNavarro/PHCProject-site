@@ -6,7 +6,7 @@ export default class ContactInfoForm extends Component {
         return (
             <form onSubmit={this.props.onSubmit}>
                 <div className="container">
-                    <h4 className="text-center p-2 m-4">Información de contacto</h4>
+                    <h4 className="text-center p-2 m-4">Información de contacto (opcional)</h4>
                     <div className="row">
                         <div className="col-md-6">
                             <TextFormGroup labelname="Nombre" inputname="nombrecontacto" handleChage={this.props.handleChange} />
@@ -46,7 +46,7 @@ export default class ContactInfoForm extends Component {
                             <div className={`alert alert-success text-center ${this.props.successRegister ? 'd-block' : 'd-none'}`}>
                                 Registro exitoso, puede revise su correo para poder iniciar sesión
                             </div>
-                            <button type="submit" className={`blue-button ${this.props.successRegister ? 'd-block' : 'd-none'}`}>
+                            <button type="submit" className={`blue-button ${!this.props.successRegister ? 'd-block' : 'd-none'}`}>
                                 Registrarse
                             </button>
                         </div>

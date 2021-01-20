@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import $ from 'jquery'
 import { FaLongArrowAltLeft } from 'react-icons/fa'
 import Cookies from 'universal-cookie';
+import CompraDetail from '../singles/CompraDetail';
 
 export default class Compra extends Component {
     constructor(props) {
@@ -10,9 +11,16 @@ export default class Compra extends Component {
 
         this.state = {
             compraid: this.props.match.params.id != undefined ? this.props.match.params.id : '',
-            MetodoEnvio: '',
-            MetodoPago: '',
-            Compra: {},
+            MetodoEnvioid: '0',
+            MetodoPagoid: '0',
+            MetodoPago: {},
+            MetodoEnvio: {},
+            Usuario: {},
+            Folio: '',
+            Subtotal: '',
+            Total: '',
+            Detalles: [],
+            DireccionEnvio: '',
             MetodosPago: [],
             MetodosEnvio: [],
             reachedEnd: false,
@@ -29,25 +37,50 @@ export default class Compra extends Component {
 
         this.cookies = new Cookies();
         this.changeSlide = this.changeSlide.bind(this);
-        this.terminarCompra = this.terminarCompra.bind(this);
+        this.editVenta = this.editVenta.bind(this);
+        this.handleInput = this.handleInput.bind(this);
         this.getMetodosEnvio = this.getMetodosEnvio.bind(this);
         this.getMetodosPgo = this.getMetodosPago.bind(this);
+        this.getDetalles = this.getDetalles.bind(this);
+        this.confirmCompra = this.confirmCompra.bind(this);
     }
 
     componentDidMount() {
         if (this.cookies.get('usid') != undefined) {
-            const usuarioid = this.cookies.get('usid');
+            const usid = this.cookies.get('usid');
+            const dataObject = {
+                compraid: this.state.compraid,
+                usuarioid: usid
+            };
             $.ajax({
-                url: 'https://pchproject-api.herokuapp.com/api/venta/check',
+                url: 'http://localhost:8000/api/venta/check',
                 method: 'POST',
                 dataType: 'json',
-                contentType: 'application/javascript',
+                contentType: 'application/json',
+                data: JSON.stringify(dataObject),
                 success: function (response) {
                     if (response.message) {
-                        window.location.href = '/';
+                        console.log(response.message);
                     }
                     else {
-                        this.setState({ Compra: response }, () => console.log(response));
+                        this.setState({
+                            Folio: response.Folio,
+                            MetodoPagoid: response.metodopago_id,
+                            MetodoEnvioid: response.metodoenvio_id,
+                            Subtotal: response.Subtotal,
+                            Total: response.Total,
+                            Estatus: response.Estatus,
+                            MetodoPago: response.metodo_pago,
+                            MetodoEnvio: response.metodo_envio,
+                            Usuario: response.usuario
+                        }, () => { 
+                            if (this.state.Usuario) {
+                                this.setState({DireccionEnvio: this.state.Usuario.Direccion});
+                            } else {
+                                this.setState({DireccionEnvio: " "});
+                            }
+                            this.getDetalles() 
+                        });
                     }
                 }.bind(this),
                 error: function (response) {
@@ -60,6 +93,20 @@ export default class Compra extends Component {
         else {
             window.location.href = '/';
         }
+    }
+    getDetalles() {
+        $.ajax({
+            url: `http://localhost:8000/api/ventadetalles/${this.state.compraid}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                console.log(response);
+                this.setState({ Detalles: [...response] });
+            }.bind(this),
+            error: function (response) {
+                console.log(response);
+            }.bind(this)
+        });
     }
     getMetodosEnvio() {
         $.ajax({
@@ -88,16 +135,68 @@ export default class Compra extends Component {
         });
     }
 
-    terminarCompra() {
-
+    confirmCompra() {
+        const dataObject = {
+            ventaid: this.state.compraid
+        };
+        console.log(dataObject);
+        $.ajax({
+            url: 'http://localhost:8000/api/venta/confirm',
+            method: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            crossDomain: true,
+            data: JSON.stringify(dataObject),
+            success: function (response) {
+                console.log(response);
+                window.location.href = '/graciasporcomprar';
+            }.bind(this),
+            error: function (response) {
+                console.log(response);
+            }.bind(this)
+        });
     }
-
+    editVenta(e) {
+        e.preventDefault();
+        const dataObject = {
+            ventaid: this.state.compraid,
+            metodoenvioid: this.state.MetodoEnvioid != undefined ? this.state.MetodoEnvioid : '',
+            metodopagoid: this.state.MetodoPagoid != undefined ? this.state.MetodoPagoid : '',
+            direccionEnvio: this.state.DireccionEnvio != undefined ? this.state.DireccionEnvio : '',
+            estatus: this.state.Estatus != undefined ? this.state.Estatus : ''
+        };
+        console.log(dataObject);
+        $.ajax({
+            url: 'http://localhost:8000/api/venta',
+            method: 'PUT',
+            dataType: 'json',
+            contentType: 'application/json',
+            crossDomain: true,
+            data: JSON.stringify(dataObject),
+            success: function (response) {
+                console.log(response);
+                this.changeSlide("front");
+                this.setState({
+                    Subtotal: response.Subtotal,
+                    Total: response.Total,
+                    MetodoPago: response.metodo_pago,
+                    MetodoEnvio: response.metodo_envio
+                }, () => console.log(this.state));
+            }.bind(this),
+            error: function (response) {
+                console.log(response);
+            }.bind(this)
+        });
+    }
+    handleInput(e) {
+        this.setState({ [e.target.name]: e.target.value });
+    }
     changeSlide(dir) {
 
         let sum = (dir == "front") ? 1 : -1;
         let current = this.state.slider.currentslide;
         let max = this.state.slider.maxslides - 1;
-        let next = current + sum;
+        let next = current + sum; 
 
         next = (next < 1) ? 0 : next;
         next = (next > max) ? max : next;
@@ -121,14 +220,13 @@ export default class Compra extends Component {
     render() {
         return (
             <div className="container-fluid">
-                <h4>Compra</h4>
-                <hr />
                 <div className="row">
-                    <div className="col-md-7">
-                        <div className="shadow-box slide-container">
+                    <div className="col-md-6 col-lg-7">
+                        <div className="shadow-box slide-container h-100">
                             <div className="row">
                                 <div className={`col-lg-12  ${this.state.slider.currentslide < 1 ? 'hidden' : 'fade-in'}`}>
                                     <button
+                                        type="button"
                                         className={`back-arrow-btn ${this.state.slider.currentslide == 0 ? 'd-none' : 'fade-in'}`}
                                         onClick={() => this.changeSlide("back")} >
                                         <FaLongArrowAltLeft />
@@ -139,36 +237,19 @@ export default class Compra extends Component {
                                 <div className="container">
                                     <h4 className="p-4 m-2">Artículos a comprar</h4>
                                     {
-                                        this.state.Compra &&
-                                            this.state.Compra.detalles != undefined ?
-                                            this.state.Compra.detalles.map((detalle, index) => {
+                                        this.state.Detalles &&
+                                            this.state.Detalles.length > 0 ?
+                                            this.state.Detalles.map((detalle, index) => {
                                                 return (
-                                                    <div className="row image-row-card" key={index}>
-                                                        <div className="col-sm-12 col-md-4">
-                                                            <img src="https://lh3.googleusercontent.com/proxy/Nghlp2qe11c8B4zMwPM_8Mk2442tjb2WxZtz1dIT2HqIzV52Q3ddaUGh8E0kSGPlsfJNrRtcHXZhF4JOsCjCCLhENOSb3JUZGCz49_WRtX6RTDRPSPDF6s-rq-WHvW3torTLchZr9AOqIwMMxYn1" alt="" className="img-fluid" />
-                                                        </div>
-                                                        <div className="col-sm-12 col-md-4">
-                                                            <h5><Link to="/product/asdasd">Nombre del producto</Link></h5>
-                                                            <p>Esta es la descripcion del producto, la verdad es que esto no es nada más que vista</p>
-                                                        </div>
-                                                        <div className="col-sm-12 col-md-2">
-                                                            <div class="form-group">
-                                                                <label for="inputState">Almacen:</label>
-                                                                <select id="inputState" class="form-control">
-                                                                    <option selected>{'--Seleccione--'}</option>
-                                                                    <option>...</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                        <div className="col-sm-12 col-md-2">
-                                                            <div class="form-group">
-                                                                <label for="inputState">Cantidad:</label>
-                                                                <input
-                                                                    className="form-control"
-                                                                    type="number" />
-                                                                <h6>Disponibles: 5</h6>
-                                                            </div>
-                                                        </div>
+                                                    <div key={index}>
+                                                        <CompraDetail
+                                                            key={index}
+                                                            Detalleid={detalle.id}
+                                                            Articuloid={detalle.articulo_id}
+                                                            Sucursalid={detalle.sucursal_id}
+                                                            Cantidad={detalle.Cantidad}
+                                                            onEdit={this.getDetalles}
+                                                        />
                                                     </div>
                                                 );
                                             })
@@ -184,65 +265,99 @@ export default class Compra extends Component {
                             </div>
                             <div className="slide d-none" ref={this.slides[1]}>
                                 <div className="container">
-                                    <h4 className="p-4 m-2">Método de envío</h4>
-                                    <hr />
-                                    {
-                                        this.state.MetodosEnvio &&
-                                            this.state.MetodosEnvio.length > 0 ?
-                                            this.state.MetodosEnvio.map((metodoenvio, index) => {
-                                                return (
-                                                    <div className="form-check m-4 p-4" key={index}>
-                                                        <input className="form-check-input" type="checkbox" value="" id="defaultCheck1" />
-                                                        <label className="form-check-label" for="defaultCheck1">
-                                                            {metodoenvio.Nombre} - {metodoenvio.Descripcion} - ${metodoenvio.Cuota}
-                                                        </label>
-                                                    </div>
-                                                );
-                                            }) : null
-                                    }
-                                    <button
-                                        className="blue-button"
-                                        onClick={() => this.changeSlide("front")}
-                                    >
-                                        Next
+                                    <form onSubmit={this.editVenta}>
+                                        <h4 className="p-4 m-2">Método de envío</h4>
+                                        <hr />
+                                        {
+                                            this.state.MetodosEnvio &&
+                                                this.state.MetodosEnvio.length > 0 ?
+                                                this.state.MetodosEnvio.map((metodoenvio, index) => {
+                                                    return (
+                                                        <div className="form-check m-4 p-4" key={index}>
+                                                            <input
+                                                                className="form-check-input"
+                                                                type="radio"
+                                                                name="MetodoEnvioid"
+                                                                checked={this.state.MetodoEnvioid == metodoenvio.id}
+                                                                value={metodoenvio.id}
+                                                                onChange={this.handleInput}
+                                                                id={`radio-metenv-${index}`}
+                                                            />
+                                                            <label className="form-check-label" htmlFor={`radio-metenv-${index}`}>
+                                                                {metodoenvio.Nombre} - {metodoenvio.Descripcion} - ${metodoenvio.Cuota}
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                }) : null
+                                        }
+                                        {
+                                            this.state.Usuario != undefined ?
+                                                <div className="form-group">
+                                                    <label htmlFor="direccionEnvioInput">Dirección de envio:</label>
+                                                    <input
+                                                        type="text"
+                                                        id="direccioEnvioInput"
+                                                        className="form-control"
+                                                        name="DireccionEnvio"
+                                                        value={this.state.DireccionEnvio}
+                                                        onChange={this.handleInput}
+                                                        placeholder="Dirección de entrega" />
+                                                </div> : null
+                                        }
+                                        <button
+                                            className="blue-button"
+                                            type="submit"
+                                        >
+                                            Next
                                     </button>
+                                    </form>
                                 </div>
                             </div>
                             <div className="slide d-none" ref={this.slides[2]}>
                                 <div className="container">
                                     <h4 className="p-4 m-2">Método de pago</h4>
-                                    {
-                                        this.state.MetodosPago &&
-                                            this.state.MetodosPago.length > 0 ?
-                                            this.state.MetodosPago.map((metodopago, index) => {
-                                                return (
-                                                    <div className="form-check m-4 p-4" key={index}>
-                                                        <input className="form-check-input" type="checkbox" value="" id="defaultCheck1" />
-                                                        <label className="form-check-label" for="defaultCheck1">
-                                                            {metodopago.Nombre} - {metodopago.Descripcion} - ${metodopago.Cuota}
-                                                        </label>
-                                                    </div>
-                                                );
-                                            }) : null
-                                    }
-                                    <button
-                                        className="blue-button"
-                                        onClick={() => this.changeSlide("front")}
-                                    >
-                                        Next
-                                    </button>
+                                    <form onSubmit={this.editVenta}>
+                                        {
+                                            this.state.MetodosPago &&
+                                                this.state.MetodosPago.length > 0 ?
+                                                this.state.MetodosPago.map((metodopago, index) => {
+                                                    return (
+                                                        <div className="form-check m-4 p-4" key={index}>
+                                                            <input
+                                                                className="form-check-input"
+                                                                type="radio"
+                                                                value={metodopago.id}
+                                                                checked={this.state.MetodoPagoid == metodopago.id}
+                                                                name="MetodoPagoid"
+                                                                onChange={this.handleInput}
+                                                                id={`radio-metpag-${index}`}
+                                                            />
+                                                            <label className="form-check-label" htmlFor={`radio-metpag-${index}`}>
+                                                                {metodopago.Nombre} - {metodopago.Descripcion} - ${metodopago.Cuota}
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                }) : null
+                                        }
+                                        <button
+                                            className="blue-button"
+                                            type="submit">
+                                            Next
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                             <div className="slide d-none" ref={this.slides[3]}>
                                 <div className="container">
-                                    <h4 className="p-4 m-2">Resumen del pedido</h4>
+                                    <h4 className="p-4 m-2">Gracias!</h4>
+                                    <h2 className="p-4 m-2 blue-text text-center">Confirme su pedido para continuar</h2>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div className="col-md-5">
+                    <div className="col-md-6 col-lg-5">
                         <div className="container-fluid">
-                            <div className="shadow-box">
+                            <div className="shadow-box h-100">
                                 <div className="table-container">
                                     <table className="table">
                                         <thead>
@@ -251,7 +366,7 @@ export default class Compra extends Component {
                                                     <h4>Folio</h4>
                                                 </th>
                                                 <th scope="col" colSpan="2">
-                                                    <h4>878454</h4>
+                                                    <h4 className="blue-text">{this.state.Folio}</h4>
                                                 </th>
                                             </tr>
                                         </thead>
@@ -264,37 +379,91 @@ export default class Compra extends Component {
                                                 <td><strong>Articulo</strong></td>
                                                 <td><strong>Cantidad</strong></td>
                                                 <td><strong>Monto</strong></td>
+
+                                            </tr>
+                                            {
+                                                this.state.Detalles != undefined &&
+                                                    this.state.Detalles.length > 0 ?
+                                                    this.state.Detalles.map((detalle, index) => {
+                                                        return (
+                                                            <tr key={index}>
+                                                                <td>{detalle.articulo.SKU}</td>
+                                                                <td>{detalle.Cantidad}</td>
+                                                                <td>{detalle.Monto}</td>
+
+                                                            </tr>
+                                                        );
+                                                    }) : null
+                                            }
+                                            <tr>
+                                                <td colSpan="2"><strong>Metodo de envío</strong></td>
+                                                <td><strong>Cuota</strong></td>
+                                            </tr>
+                                            <tr className="blue-text">
+                                                {
+                                                    this.state.MetodoEnvio != undefined ?
+                                                        <React.Fragment>
+                                                            <td colSpan="2">{this.state.MetodoEnvio.Nombre}</td>
+                                                            <td>$ {this.state.MetodoEnvio.Cuota}</td>
+                                                        </React.Fragment> :
+                                                        <React.Fragment>
+                                                            <td colSpan="2">No disponible</td>
+                                                            <td>$0.00</td>
+                                                        </React.Fragment>
+                                                }
+                                            </tr>
+                                            <tr className="blue-text">
+                                                {
+                                                    this.state.DireccionEnvio != undefined ?
+                                                        <React.Fragment>
+                                                            <td colSpan="3">{this.state.DireccionEnvio}</td>
+                                                        </React.Fragment> :
+                                                        <React.Fragment>
+                                                            <td colSpan="3">Sin direccion de envio</td>
+                                                        </React.Fragment>
+                                                }
                                             </tr>
                                             <tr>
                                                 <td colSpan="2"><strong>Metodo de pago</strong></td>
                                                 <td><strong>Cuota</strong></td>
                                             </tr>
                                             <tr className="blue-text">
-                                                <td colSpan="2">PayPal</td>
-                                                <td>$0</td>
+                                                {
+                                                    this.state.MetodoPago != undefined ?
+                                                        <React.Fragment>
+                                                            <td colSpan="2">{this.state.MetodoPago.Nombre}</td>
+                                                            <td>$ {this.state.MetodoPago.Cuota}</td>
+                                                        </React.Fragment> :
+                                                        <React.Fragment>
+                                                            <td colSpan="2">No disponible</td>
+                                                            <td>$0.00</td>
+                                                        </React.Fragment>
+                                                }
                                             </tr>
                                             <tr>
-                                                <td colSpan="2"><strong>Metodo de envío</strong></td>
-                                                <td><strong>Cuota</strong></td>
-                                            </tr>
-                                            <tr className="blue-text">
-                                                <td colSpan="2">Terrestre local</td>
-                                                <td>$59</td>
+                                                <td>
+                                                    <h5>Subtotal:</h5>
+                                                </td>
+                                                <td colSpan="2">
+                                                    <h5 className="blue-text">$ {this.state.Subtotal}</h5>
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <td>
                                                     <h4>Total:</h4>
                                                 </td>
                                                 <td colSpan="2">
-                                                    <h4 className="blue-text">$14454.00</h4>
+                                                    <h4 className="blue-text">$ {this.state.Total}</h4>
                                                 </td>
                                             </tr>
                                             <tr>
                                                 <td colSpan="3">
                                                     {
                                                         this.state.reachedEnd == true ?
-                                                            <button className="blue-button btn-lg btn-block">
-                                                                Terminar!
+                                                            <button
+                                                                className="blue-button btn-lg btn-block"
+                                                                onClick={this.confirmCompra}>
+                                                                Confirmar!
                                                             </button>
                                                             : null
                                                     }

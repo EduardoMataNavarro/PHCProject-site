@@ -14,6 +14,7 @@ import Compra from './components/pages/Compra'
 /* ERRORS */
 import Error404 from './components/error/Error404';
 import ProductPage from './components/pages/ProductPage';
+import CompraTerminada from './components/pages/CompraTerminada';
 
 export default class App extends Component {
   render() {
@@ -29,6 +30,7 @@ export default class App extends Component {
             <Route path='/signup' component={Signup} />
             <Route path='/carrito' component={Cart} />
             <Route path='/compra/:id' component={Compra}  />
+            <Route path='/graciasporcomprar' component={CompraTerminada}  />
             <Route path='*' component={Error404} />
           </Switch>
         </div>

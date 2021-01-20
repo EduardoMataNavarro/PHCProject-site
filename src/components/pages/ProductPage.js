@@ -11,12 +11,18 @@ export default class ProductPage extends Component {
         this.state = {
             productId: this.props.match.params.id,
             producto: {},
+            sucursal: '0',
+            disponibles: '0',
+            estatusInventario: '',
+            isDisponible: true,
+            sucursales: [],
             imagenes: [],
             relacionados: []
         };
 
         this.cookies = new Cookies();
         this.getProductosRelacionados = this.getProductosRelacionados.bind(this);
+        this.getDisponibilidad = this.getDisponibilidad.bind(this);
     }
 
     static getDerivedStateFromProps(nextProps, prevState) {
@@ -56,13 +62,26 @@ export default class ProductPage extends Component {
                     console.log(response);
                 }.bind(this)
             });
+            $.ajax({
+                url: 'https://pchproject-api.herokuapp.com/api/sucursal',
+                method: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    console.log(response);
+                    this.setState({ sucursales: [...response] });
+                }.bind(this),
+                error: function (error) {
+                    console.log(error)
+                }.bind(this)
+            });
         }
     }
     componentDidMount() {
         $.ajax({
-            url: 'https://pchproject-api.herokuapp.com/articulo/get/' + this.state.productId,
+            url: 'https://pchproject-api.herokuapp.com/api/articulo/get/' + this.state.productId,
             method: 'GET',
             dataType: 'json',
+            crossDomain: true,
             success: function (response) {
                 console.log(response);
                 this.setState({ producto: response }, () => {
@@ -77,6 +96,7 @@ export default class ProductPage extends Component {
             url: `https://pchproject-api.herokuapp.com/api/articulo/${this.state.productId}/media`,
             method: 'GET',
             dataType: 'json',
+            crossDomain: true,
             success: function (response) {
                 this.setState({ imagenes: [...response] }, () => { console.log(this.state); });
             }.bind(this),
@@ -84,11 +104,23 @@ export default class ProductPage extends Component {
                 console.log(response);
             }.bind(this)
         });
+        $.ajax({
+            url: 'https://pchproject-api.herokuapp.com/api/sucursal',
+            method: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                console.log(response);
+                this.setState({ sucursales: [...response] });
+            }.bind(this),
+            error: function (error) {
+                console.log(error)
+            }.bind(this)
+        });
     }
 
     getProductosRelacionados(id) {
         $.ajax({
-            url: `http://localhost:8000/api/articulo/related/${id}`,
+            url: `https://pchproject-api.herokuapp.com/api/articulo/related/${id}`,
             method: 'GET',
             dataType: 'json',
             success: function (response) {
@@ -98,6 +130,38 @@ export default class ProductPage extends Component {
                 console.log(response);
             }.bind(this)
         })
+    }
+    getDisponibilidad(e) {
+        this.setState({ sucursal: e.target.value }, () => {
+            const dataObject = {
+                sucursalid: this.state.sucursal,
+                articuloid: this.state.productId
+            };
+            console.log(dataObject);
+            $.ajax({
+                url: 'https://pchproject-api.herokuapp.com/api/inventario/check',
+                method: 'POST',
+                contentType: 'application/json',
+                dataType: 'json',
+                data: JSON.stringify(dataObject),
+                success: function (response) {
+                    console.log(response);
+                    this.setState({
+                        disponibles: response.cantidad,
+                        estatusInventario: response.message
+                    }, () => {
+                        if (this.state.disponibles > 0) {
+                            this.setState({ isDisponible: true });
+                        } else {
+                            this.setState({ isDisponible: false });
+                        }
+                    })
+                }.bind(this),
+                error: function (error) {
+                    console.log(error)
+                }.bind(this)
+            });
+        });
     }
 
     render() {
@@ -133,8 +197,34 @@ export default class ProductPage extends Component {
                         <h4>A partir de <span className="blue-text" >{this.state.producto.CantidadMayoreo}</span> piezas</h4>
                         <br />
                         <h5>Precio de menudeo: <span className="blue-text" >${this.state.producto.Precio}</span> </h5>
+                        <div className="w-100 mt-2">
+                            <hr />
+                            <div className="form-group">
+                                <label htmlFor="sucursalSelect">Consulte disponibilidad: </label>
+                                <select
+                                    className="form-control"
+                                    id="sucursalSelect"
+                                    onChange={this.getDisponibilidad}
+                                    value={this.state.sucursal}>
+                                    <option value="0">{"--Seleccione una sucursal--"}</option>
+                                    {
+                                        this.state.sucursales &&
+                                        this.state.sucursales.map((sucursal, index) => {
+                                            return <option value={sucursal.id} key={index}>{sucursal.Nombre}</option>
+                                        })
+                                    }
+                                </select>
+                                <h6 className="mt-1">Disponibles: <span className="blue-text">{this.state.disponibles}</span></h6>
+                                {
+                                    this.state.estatusInventario &&
+                                    <h6 className="mt-1">Estatus: <span className="blue-text">{this.state.estatusInventario}</span></h6>
+                                }
+                            </div>
+                            <hr />
+                        </div>
                         {
-                            this.cookies.get('usid') != undefined ?
+                            this.cookies.get('usid') != undefined &&
+                                this.state.isDisponible ?
                                 <div className="row">
                                     <div className="col-sm-12">
                                         <button className="btn blue-button btn-lg btn-block mb-4">
@@ -185,7 +275,7 @@ export default class ProductPage extends Component {
                             : null
                     }
                 </div>
-                <h4 className="mt-4">Productos relacionados: 
+                <h4 className="mt-4">Productos relacionados:
                     <span className="blue-text"> {this.state.producto.categoria != undefined ? this.state.producto.categoria.Nombre : null}</span>
                 </h4>
                 <hr />

@@ -27,28 +27,7 @@ export default class Cart extends Component {
     }
 
     componentDidMount() {
-        if (this.cookies.get('usid') !== undefined) {
-            const userid = this.cookies.get('usid');
-            this.setState({ isLogged: true, userId: userid });
-
-            $.ajax({
-                url: `https://pchproject-api.herokuapp.com/api/carrito/user/${userid}`,
-                method: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    console.log(response);
-                    if (response.message) {
-                        this.setState({ hasMessage: true, message: response.message });
-                    }
-                    else {
-                        this.setState({ detalles: [...response] });
-                    }
-                }.bind(this),
-                error: function (response) {
-                    console.log(response);
-                }.bind(this)
-            });
-        }
+        this.getDetalles();
     }
 
     handleSubmit(e) {
@@ -56,22 +35,30 @@ export default class Cart extends Component {
         window.location.href = '/compra';
     }
     getDetalles() {
-        $.ajax({
-            url: `https://pchproject-api.herokuapp.com/api/carrito/`,
-            method: 'GET',
-            dataType: 'json',
-            success: function (response) {
-                if (response.message) {
-                    this.setState({ hasError: true, errorMessage: response.message });
-                }
-                else {
-                    window.location.href = '/venta/' + response.id;
-                }
-            }.bind(this),
-            error: function (response) {
-                console.log(response);
-            }.bind(this)
-        });
+        if (this.cookies.get('usid') !== undefined) {
+            const userid = this.cookies.get('usid');
+            this.setState({ isLogged: true, userId: userid });
+
+            this.setState({detalles: []}, ()=> {
+                $.ajax({
+                    url: `https://pchproject-api.herokuapp.com/api/carrito/user/${userid}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        console.log(response);
+                        if (response.message) {
+                            this.setState({ hasMessage: true, message: response.message });
+                        }
+                        else {
+                            this.setState({ detalles: [...response] });
+                        }
+                    }.bind(this),
+                    error: function (response) {
+                        console.log(response);
+                    }.bind(this)
+                });
+            });
+        }
     }
 
     comprarCarrito() {
@@ -92,21 +79,7 @@ export default class Cart extends Component {
             }.bind(this)
         });
     }
-
-    deleteDetalle(id) {
-        $.ajax({
-            url: `http://localhost:8000/api/carrito/detalle/${id}`,
-            method: 'DELETE',
-            dataType: 'json',
-            success: function (response) {
-                console.log(response);
-                this.getDetalles();
-            },
-            error: function (response) {
-                console.log(response);
-            }
-        });
-    }
+    
     render() {
         return (
             <div>
@@ -134,6 +107,7 @@ export default class Cart extends Component {
                                                             isLogged={this.state.isLogged}
                                                             detalleid={detalle.id}
                                                             articuloid={detalle.articulo_id}
+                                                            onUpdate={this.getDetalles}
                                                         />
                                                         <hr />
                                                     </div>

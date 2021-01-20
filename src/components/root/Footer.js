@@ -12,12 +12,12 @@ export default class Footer extends Component {
     }
     componentDidMount() {
         $.ajax({
-            url: 'http://localhost:8000/api/sucursal',
+            url: 'https://pchproject-api.herokuapp.com/api/sucursal',
             method: 'GET',
+            dataType: 'json',
+            crossDomain: true,
             success: function (response) {
-                this.setState({ sucursales: [...response] }, () => {
-                    console.log(response);
-                });
+                this.setState({ sucursales: [...response] });
             }.bind(this),
             error: function (response) {
                 console.log(response);

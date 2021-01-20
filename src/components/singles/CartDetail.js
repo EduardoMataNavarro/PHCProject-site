@@ -21,6 +21,8 @@ export default class CartDetail extends Component {
         this.handleSucursalChange = this.handleSucursalChange.bind(this);
         this.handleCantidadChange = this.handleCantidadChange.bind(this);
         this.createCompra = this.createCompra.bind(this);
+        this.deleteDetalle = this.deleteDetalle.bind(this);
+        this.updateParent = this.updateParent.bind(this);
     }
     componentDidMount() {
         $.ajax({
@@ -79,21 +81,47 @@ export default class CartDetail extends Component {
     }
     createCompra() {
         if (this.cookies.get('usid') != undefined) {
-            const userid = this.cookies.get('usid');
+            const usid = this.cookies.get('usid');
+            const dataObject = {
+                userid: usid,
+                detalle: {
+                    articuloid: this.state.articuloid,
+                    cantidad: this.state.cantidad,
+                    sucursalid: this.state.sucursal
+                }
+            };
             $.ajax({
-                url: 'https://pchproject-api.herokuapp.com/api/venta',
+                url: 'http://localhost:8000/api/venta',
                 method: 'POST',
                 dataType: 'json',
                 contentType: 'application/json',
-                data: JSON.stringify(),
+                data: JSON.stringify(dataObject),
                 success: function (response) {
-                    
+                    console.log(response);
+                    window.location.href = `/compra/${response.id}`;
                 }.bind(this),
                 error: function (response) {
                     console.log(response);
                 }
             })
         }
+    }
+    updateParent() {
+        this.props.onUpdate();
+    }
+    deleteDetalle(){
+        $.ajax({
+            url: `http://localhost:8000/api/carritodetalle/${this.state.iddetalle}`,
+            method: 'DELETE',
+            dataType: 'json',
+            success: function (response) {
+                console.log(response);
+                this.updateParent();
+            }.bind(this),
+            error: function (response) {
+                console.log(response);
+            }.bind(this)
+        })
     }
     render() {
         return (
@@ -171,7 +199,7 @@ export default class CartDetail extends Component {
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn blue-standard-button btn-block" onClick={this.props.deleteDetalle}>
+                                    className="btn blue-standard-button btn-block" onClick={this.deleteDetalle}>
                                     Quitar
                                 </button>
                             </React.Fragment>
